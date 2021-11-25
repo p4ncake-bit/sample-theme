@@ -1,0 +1,21 @@
+{
+    "id": "sample-theme",
+    "name": "Sample theme",
+    "stylesheet": true,
+    "elements": [
+        {
+            "target": { "id": "Buttons", "selectors": [".ux_button"] },
+
+            "styling": {
+                "style": {
+                    "background-color": "red",
+                    "color": 0
+                },
+
+                "options": [
+                    [ "red", "blue", "white" ]
+                ]
+            }
+        }
+    ]
+}
