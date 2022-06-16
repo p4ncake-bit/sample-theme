@@ -1,52 +1,68 @@
-# SX 3.0 Sample Theme
-This is a template that can be used for building modern SX 3.0 themes. Even though it doesn't style much, it explains the simple syntax of `theme.json` configuration files as well as showing an implementation of an option.
+# Hollywood Sample Theme
+This is a template that can be used for building modern Hollywood (SX 3.0) themes. It is a direct copy of an early 2022 version of the Hollywood Dark theme.
 
-## Configuration
-This is a simple `theme.json` file that styles every button in the interface to a red background and white text by default. To do so, it uses the element selector `.ux_button` to select every button control, uses a default property in `elements.styling.style` to set their background color (`background-color`) to red, and assigns the text color (`color`) to an option list defined in `elements.styling.options`. Assigning a style property to an option list is done by providing the property in `elements.styling.style` the zero-based index number of the array in `elements.styling.options` (so, for instance, if you want the `color` property to be something users can choose from then you simply insert an array of options into `elements.styling.options` and set `color`'s value in `elements.styling.style` to 0 if it's the first element, 1 if it's the second, etc.)
-```json
-{
-    "id": "sample-theme",
-    "name": "Sample theme",
-    "stylesheet": true,
-    "elements": [
-        {
-            "target": { "id": "Buttons", "selectors": [".ux_button"] },
+For more information about building dynamic, animated and configurable themes, we highly suggest you take a look at our [great selection](https://github.com/synllc/hollywood/tree/main/src/renderer/style/default-themes) of default pre-included themes in the Hollywood repository. This repository serves more as a documentation reference for people in the process of building themes and researching the internals of our theming engine.
 
-            "styling": {
-                "style": {
-                    "background-color": "red",
-                    "color": 0
-                },
+## Differences between legacy and Hollywood themes
+- **SX 2.0 themes** are limited to color, font and image customization. **SX 3.0 themes** are **unlimited** in terms of customization, allowing you to change colors, fonts, borders, corners, element sizes, layouts, and much more. The power of a SX 3.0 theme is limited by the limitations of [Sass](https://sass-lang.com/) and cascading stylesheets, which are arguably the most powerful theming engines available.
+- **SX 2.0 themes** are static and cannot offer theme-specific configuration and customization. **SX 3.0 themes** can be **greatly customized** by the user if the theme allows it using `theme.json` configuration records, palettes, and metrics.
+- **SX 2.0 themes** often have to replace files within the installation directory to achieve extent customization, namely editor customization. **SX 3.0 themes** are **dynamically loaded** by Hollywood and does not require any modifications to the installation or source code to do most things, _including_ customizing editor colors.
+- Only one **SX 2.0 theme** can be installed at a time due to their hardcoded nature, whereas multiple **SX 3.0 themes** can be installed into `/themes` and chosen within the interface.
 
-                "options": [
-                    [ "red", "blue", "white" ]
-                ]
-            }
-        }
-    ]
-}
+## Legacy theme support
+While Hollywood does not natively include backwards compatibility with SX 2.0 themes, it does include a theme converter, which consumes a SX 2.0 archive (`.zip` file) and outputs a valid SX 3.0 theme that can be subsequently loaded in Hollywood. Bear in mind that the theme converter is not perfect and only tries to approximate what a 2.0 theme would look on the 3.0 interface.
+
+# Structure reference
+## `theme.json` File
+This is the format of the `theme.json` file, which dictates theme information, variables and metrics. Only `id` and `name` are required.
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Internal identifier for the theme. If `stylesheet` is `true`, its filename must be this. |
+| `name` | `string` | Human-readable name for the theme that will show up in the interface. |
+| `stylesheet` | `boolean` | Indicates whether or not a cascading stylesheet will be loaded. **Using a stylesheet is highly recommended as it allows you to access the most powerful theming features.** |
+| `editor` | `string` | ID of the editor theme to use. `vscode`, `vscode-dark`, `synapse-dark` and `synapse-light` are supported by default (the latter two offer specialized syntax highlighting for Luau but are otherwise equivalent to their vscode analogues). You can use a default monaco theme by setting this to `custom` and supplying a theme in a file called `editor.json`. If unset, the interface will load `synapse-dark` by default. |
+| `vibrancy` | `boolean` | If enabled, then this theme will be able to make use of vibrant [acrylic](https://docs.microsoft.com/en-us/windows/apps/design/style/acrylic)/[mica](https://docs.microsoft.com/en-us/windows/apps/design/style/mica) (transparent) window elements, on Windows 10 and Windows 11 respectively. Vibrancy affects are also supported on macOS. This setting will not change anything on operating systems other than Windows 10/11/macOS and is useless. Requires the experimental acrylic renderer to be enabled by the user. |
+| `invertconsole` | `boolean` | Whether the luminosity of console messages should be inverted. Enable this if you have a dark theme and would like for dark-colored prints to be lightly recolored so users can read them comfortably. |
+| `settingOverrides` | Dictionary mapping `string` to `any` | Allows the theme to manually override specific settings, such as the UI or editor layout configuration. Certain settings cannot be overriden by the theme for safety reasons. Each key must be the ID of the setting (IDs of indivdual settings can be found in the [Hollywood source code](https://github.com/synllc/hollywood/blob/main/src/renderer/settings-ui.tsx)) and its associated value must be the override. **The user will be prompted to allow these changes and may deny them if they desire.** |
+| `groups` | Dictionary mapping `string` to `VariableGroup` | The theme can define value groups through this dictionary, and individual element properties in `list` can be bound to a variable group through its name. Each value group has a unique set value. If you point two properties towards the same value group, and the user chooses a value from that group, then these two props will have that group's chosen value. If you want a property to have the same selection of colors, but bound to distinct value groups, simply duplicate the value group. |
+| `list` | Dictionary mapping `string` to `Variable` | List of variable elements. Maps a human-readable name to a Variable object. More on the variable object below. |
+| `metrics` | Dictionary mapping `string` to `ThemeMetric` | List of adjustable metrics. Useful to provide layout customization to users. More on the metric object below. |
+
+## `Variable`
+| Field | Type | Description |
+| --- | --- | --- |
+| `groups` | Dictionary mapping `string` to `VariableGroup`  | Same as the `groups` property in `theme.json`. This can either be a value group OR a constant string specifying a CSS value. Bear in mind the string will be stiched into the resulting stylesheet - there won't be any value type detection, so if you're going to pass a string for the stylesheet (for "content" properties for instance), you need to make sure the actual quote symbols are included. |
+| `map` | Dictionary mapping `string` to `string`  | Variable name-group map. Each key is the variable you want to style, and the value is the name of the value group (local and global). |
+| `description` | `string` | Human-readable description for the variable that will show up in the interface. |
+
+## `ThemeMetricValue`
+| Field | Type | Description |
+| --- | --- | --- |
+| `default` | `number` | Default value for the metric. We suggest something midway between your minimum and maximum. |
+| `minimum` (optional) | `number` | Minimum number for the metric. Defaults to `default` * -2, unless `negative` is falsy. |
+| `maximum` (optional) | `number` | Maximum number for the metric. Defaults to `default` * 2. |
+| `negative` (optional) | `boolean` | Sets whether or not the value can go negative. |
+
+
+## `ThemeMetric`
+| Field | Type | Description |
+| --- | --- | --- |
+| `title` | `string` | Human-readable title for your metric. |
+| `description` | `string` | Should describe what your metric impacts in greater detail. |
+| `metric` | `ThemeMetricValue` | The data which defines the metric's behavior. See above. |
+
+# Stylesheet duties
+## Variables
+**Variables** allow themes to include their own customization options. Accessible through the theme's stylesheet, their value is bound to an author-defined group of values inserted into either the variable's own local groups or in the theme's global groups, which allows for the creation of palettes and a consistent design language. If more flexibility is desired, value groups can also include a `picker`, which allows users to select the color of their choosing from a color picker. For more information about how variables work within stylesheets, please take a look at the [Sass documentation](https://sass-lang.com/documentation/variables).
+
+Even though you can define your own variables, Hollywood already comes with a [list of variables](hollywood-dark.scss) ready to customize. Their values automatically default to the values defined in the `Hollywood Dark` theme (which is used as the base for this sample theme), so if you are making a light theme or anything that would contrast poorly with the dark palette of Hollywood, make sure to override the necessary variables or otherwise you will have an ugly Christmas sweater of a theme.
+
+## Metrics
+**Metrics** allow themes to include customization options that can impact the theme layout. Similar to variables, their values are accessible via the stylesheet, but unlike variables, they are not bound to color value groups. Instead, they are bound to the value of their sliders which can be manually adjusted by the user in the UI. Because metrics can make the UI look extremely ugly when misconfigured, it's important that the range of values which the user can pick from is limited for every single metric. `Hollywood Dark` already comes with a set of demonstration metrics, including one that controls the roundedness of buttons (as not everyone appreciates round buttons and would much rather have squares).
+
+## Stitching point
+If you take a look at the sample theme or any of the included Hollywood themes, you will see this comment after variable declarations:
+```ts
+//@STITCH
 ```
-Option colors can either be a simple color string (like `red`, `blue` or `white`), an hexadecimal number preceded by a `#` (like `#ff0011`), an RGB value (like `rgb(255, 23, 3)`) or an RGBA value (like `rgba(255, 23, 3, 50%)`). If you're customizing a non-color property, such as a button's `border-radius` (corners), you can provide a number. We will provide a list of common styling patterns and properties, but for more information you can [consult Mozilla's web technology documentation.](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference)
-
-## Stylesheet
-Users with experience in writing cascading stylesheets can define the `stylesheet` property in `theme.json` to `true` and provide a stylesheet file named `{id}.css` in the root of the theme archive (where `{id}` is the id provided in `theme.json`). Writing stylesheets may be more intuitive and powerful than using the `theme.json` styling syntax but does not offer the capacity to implement options. Generally, using both makes for the best themes.
-
-The stylesheet provided in this repository (`sample-theme.css`) replaces the global interface font with Comic Sans MS and adds a on-hover animation to every interface button using the `transition` property and `transform`.
-## Common properties and patterns
-There are a list of useful selectors and properties that may be commonly used when making themes. **This is not an exhaustive list** - there is a gigantic number of selectors and properties that can be used to create great customization.
-
-| Selector | Properties | Description |
-| - | - | - |
-|All elements|`color`<br/>`background-color`<br/>`border-width`<br/>`border-style`<br/>`border-color`<br/>`border`|`color` can be used on any element to replace its text color. `background-color` can be used on any element to replace its background-color. `border-width`, `border-style` and `border-color` can be used to add, remove or modify the border of any selected elements. Protip: to rapidly delete a border, you can simply set the `border` property to `none`.|
-|`.ux_button`<br/>`.ux_textbox_container`<br/>`.ux_checkbox_check`|`border-radius`|For people that hate corners, you can set `border-radius` to `0` to remove them from elements.|
-|`.ux_checkbox_label`<br/>`.ux_checkbox_check`<br/>`.ux_textbox_label`<br/>`.ux_textbox_container_icon`|`color`<br/>`font-family`|Certain elements have specific selectors for their labels and icons. For instance, if you want to modify the color of a textbox's icon without also changing the color of its label or the text within, then you can simply use the `.ux_textbox_container_icon` selector to customize only the icon.|
-|`#ban_bar`<br/>`.ban_control`<br/>`#nav_bar`<br/>`.nav_entry`|`color`<br/>`background-color`|The title bar of the window and its elements have selectors starting with `#ban`. The navigation bar and its entries have selectors starting with `.nav`.|
-|`#syn_app`|`color`<br/>`background-color`|`#syn_app` is the selector for the window itself - meaning you can change the background color of the window or the global color, or pretty much any global property by changing its properties.|
-
-**I will reiterate that this is certainly not an exhaustive list of selectors and their properties.** There are hundreds and hundreds of elements that can be customized using the SX 3.0 theming engine. You can either consult the [base stylesheet](https://github.com/synllc/hw/blob/main/src/renderer/hollywood-base.scss) for the interface over at its repository, or [consult Mozilla's web technology documentation.](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference)
-## Distribution
-SX 2.0 themes were directly extracted into the interface's `bin` folder. **In 3.0, themes are now distributed as individual archives** that must simply be placed into the `/themes` directory **without extraction** (akin to Minecraft resource packs if you are familiar with them). You can then load in the theme at runtime by going to options and choosing the theme of your choice under the respective dropdown.
-## Legacy themes
-**SX 3.0 has rudimentary and limited support for legacy SX 2.0 themes.** Due to differences between the SX 2.X interface and the SX 3.0 interface, it is essentially impossible to implement full support for old themes. **It is highly recommended that you convert any existing themes to the new format and make adjustments as necessary**. We do not promise your SX 2.0 themes will look great on the 3.0 interface - simple themes however may look fine depending on their composition.
-
-To install a SX 2.0 theme, you simply have to copy all assets and the `theme-wpf.json` file into an archive (`zip` file), and install it into `/themes` like a normal 3.0 theme. The interface will automatically detect that it's a legacy theme and consider that accordingly on load when you select it in options.
+This comment is _highly important_ and your theme will **not** compile without it. This is what is called the stitching point, and this is where Hollywood will insert its own definitions, variables and utilities that you can use in your stylesheet. The stitching point **must come after** variable declarations **but not before Sass styles and directives** (such as classes, selectors, `@` commands, you name it). It is of course evident that a single `//@STITCH` must be in your stylesheet and not multiple.
